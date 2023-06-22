@@ -1,7 +1,7 @@
 {
     "python.linting.enabled": true,
     "python.languageServer": "Pylance",
-    "python.analysis.typeCheckingMode": "basic",
+    //"python.analysis.typeCheckingMode": "basic",
     "picowgo.syncFolder": "lib",
     "python.analysis.typeshedPaths": [
         ".vscode/Pico-W-Stub"

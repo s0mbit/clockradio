@@ -1,5 +1,5 @@
 from machine import Pin,I2C,Timer,SPI
-from adafruit_ssd1306 import SSD1306_SPI
+from lib.ssd1306 import SSD1306_SPI
 
 
 SCREEN_WIDTH = 128 #number of columns
@@ -14,7 +14,7 @@ spi_cs  = Pin(13) # chip select; to be connected to the SPI chip select of the P
 SPI_DEVICE = 1 # Because the peripheral is connected to SPI 0 hardware lines of the Pico
 
 oled_spi = SPI( SPI_DEVICE, baudrate= 100000, sck= spi_sck, mosi= spi_sda )
-oled = SSD1306_SPI( SCREEN_WIDTH, SCREEN_HEIGHT, oled_spi, spi_dc, spi_res, spi_cs, True )
+oled = SSD1306_SPI( SCREEN_WIDTH, SCREEN_HEIGHT, oled_spi, spi_dc, spi_res, spi_cs, True)
 
 
 def setup():
