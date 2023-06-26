@@ -37,7 +37,27 @@ class OLEDText:
         self.fill(0)
         self.show()
         
-    def display_time(self):
+    def current_time_in_timezone(self):
+        # Get the current UTC time
         current_time = utime.localtime()
+
+        # Determine the current offset
+        if (current_time[1] > 3 or current_time[1] < 11 or
+            (current_time[1] == 3 and current_time[2] >= 8) or
+            (current_time[1] == 11 and current_time[2] < 1)):
+            offset = -7  # Daylight Saving Time (second Sunday in March to first Sunday in November)
+        else:
+            offset = -8  # Standard Time
+
+        # Calculate the number of seconds in the offset
+        offset_seconds = offset * 3600  # There are 3600 seconds in an hour
+
+        # Get the new time as a timestamp, add the offset, and convert back to a struct_time
+        local_time = utime.localtime(utime.mktime(current_time) + offset_seconds)
+
+        return local_time
+        
+    def display_time(self):
+        current_time = self.current_time_in_timezone()
         time_str = "{:02d}:{:02d}:{:02d}".format(current_time[3], current_time[4], current_time[5])
         self.display_text_value("Time", time_str)
