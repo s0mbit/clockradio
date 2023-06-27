@@ -19,12 +19,14 @@ oled = display.OLEDText()
 
 try:
     # Start the display
-    
+
     # Main loop
     while True:
         # Add tasks here
         utime.sleep(1)
         oled.display_time()
+
+        
 
 except Exception as e:
     print('Error:', e)

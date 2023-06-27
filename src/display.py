@@ -19,7 +19,9 @@ class OLEDText:
         self.oled = SSD1306_SPI(self.width, self.height, self.oled_spi, spi_dc, spi_res, spi_cs, True)
 
     def set_text(self, text, row=0):
+        self.clear()
         self.oled.text(text, 0, row * 10)  # Assumes each row is 10 pixels high
+        self.update_display()
 
     def display_text_value(self, text, value, row=0):
         full_text = "{}: {}".format(text, value)
@@ -60,4 +62,4 @@ class OLEDText:
     def display_time(self):
         current_time = self.current_time_in_timezone()
         time_str = "{:02d}:{:02d}:{:02d}".format(current_time[3], current_time[4], current_time[5])
-        self.display_text_value("Time", time_str)
+        self.display_text_value("Time", time_str,0)

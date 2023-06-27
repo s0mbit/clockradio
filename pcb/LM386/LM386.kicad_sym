@@ -1,0 +1,110 @@
+
+(kicad_symbol_lib (version 20211014) (generator kicad_symbol_editor)
+  (symbol "LM386" (pin_names (offset 1.016)) (in_bom yes) (on_board yes)
+    (property "Reference" "U" (id 0) (at 5.08978 -5.726 0.0)
+      (effects (font (size 1.27 1.27)) (justify top left))
+    )
+    (property "Value" "LM386" (id 1) (at 5.0836 5.0836 0.0)
+      (effects (font (size 1.27 1.27)) (justify top left))
+    )
+    (property "Footprint" "DIP08" (id 2) (at 0 0 0)
+      (effects (font (size 1.27 1.27)) (justify bottom) hide)
+    )
+    (symbol "LM386_0_0"
+      (polyline
+        (pts (xy -1.27 -3.175) (xy -1.27 -1.905)) (stroke (width 0.1524))
+      )
+      (polyline
+        (pts (xy -1.905 -2.54) (xy -0.635 -2.54)) (stroke (width 0.1524))
+      )
+      (polyline
+        (pts (xy -1.905 2.54) (xy -0.635 2.54)) (stroke (width 0.1524))
+      )
+      (polyline
+        (pts (xy 0.0 -5.08) (xy 0.0 -3.8862)) (stroke (width 0.1524))
+      )
+      (polyline
+        (pts (xy 0.0 3.9116) (xy 0.0 5.08)) (stroke (width 0.1524))
+      )
+      (polyline
+        (pts (xy 7.62 0.0) (xy -2.54 -5.08)) (stroke (width 0.4064))
+      )
+      (polyline
+        (pts (xy -2.54 -5.08) (xy -2.54 5.08)) (stroke (width 0.4064))
+      )
+      (polyline
+        (pts (xy -2.54 5.08) (xy 5.08 1.27)) (stroke (width 0.4064))
+      )
+      (polyline
+        (pts (xy 5.08 1.27) (xy 7.62 0.0)) (stroke (width 0.4064))
+      )
+      (polyline
+        (pts (xy 5.08 1.27) (xy 5.08 2.54)) (stroke (width 0.1524))
+      )
+      (pin input line (at -5.08 -2.54 0) (length 2.54)
+        (name "~"
+          (effects (font (size 1.016 1.016)))
+        )
+        (number "3"
+          (effects (font (size 1.016 1.016)))
+        )
+      )
+      (pin input line (at -5.08 2.54 0) (length 2.54)
+        (name "~"
+          (effects (font (size 1.016 1.016)))
+        )
+        (number "2"
+          (effects (font (size 1.016 1.016)))
+        )
+      )
+      (pin output line (at 10.16 0.0 180.0) (length 2.54)
+        (name "~"
+          (effects (font (size 1.016 1.016)))
+        )
+        (number "5"
+          (effects (font (size 1.016 1.016)))
+        )
+      )
+      (pin power_in line (at 0.0 7.62 270.0) (length 2.54)
+        (name "~"
+          (effects (font (size 1.016 1.016)))
+        )
+        (number "6"
+          (effects (font (size 1.016 1.016)))
+        )
+      )
+      (pin power_in line (at 0.0 -7.62 90.0) (length 2.54)
+        (name "~"
+          (effects (font (size 1.016 1.016)))
+        )
+        (number "4"
+          (effects (font (size 1.016 1.016)))
+        )
+      )
+      (pin bidirectional line (at 5.08 5.08 270.0) (length 2.54)
+        (name "~"
+          (effects (font (size 1.016 1.016)))
+        )
+        (number "8"
+          (effects (font (size 1.016 1.016)))
+        )
+      )
+      (pin bidirectional line (at 2.54 5.08 270.0) (length 2.54)
+        (name "~"
+          (effects (font (size 1.016 1.016)))
+        )
+        (number "1"
+          (effects (font (size 1.016 1.016)))
+        )
+      )
+      (pin bidirectional line (at 2.54 -5.08 90.0) (length 2.54)
+        (name "~"
+          (effects (font (size 1.016 1.016)))
+        )
+        (number "7"
+          (effects (font (size 1.016 1.016)))
+        )
+      )
+    )
+  )
+)
