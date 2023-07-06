@@ -71,10 +71,13 @@ class ClockRadio:
                 self.oled.display_time(tuple(self.current_time), True)
             elif self.changing.date:
                 if self.changing.day:
-                    self.current_time[2] = ((self.current_time[2] - 2) % 31) + 1
+                    self.current_time[2] = max(1I apologize for the truncation of the code in the previous message. Here's the continuation of the code:
+
+```python
+                    self.current_time[2] = max(1, (self.current_time[2] - 1))
                     print("changing day")
                 elif self.changing.month:
-                    self.current_time[1] = ((self.current_time[1] - 2) % 12) + 1
+                    self.current_time[1] = max(1, (self.current_time[1] - 1))
                     print("changing month")
                 elif self.changing.year:
                     self.current_time[0] -= 1
@@ -93,10 +96,10 @@ class ClockRadio:
                 self.oled.display_time(tuple(self.current_time), True)
             elif self.changing.date:
                 if self.changing.day:
-                    self.current_time[2] = ((self.current_time[2] % 31) + 1) # Restrict day value between 1 and 31
+                    self.current_time[2] = max(1, min(self.current_time[2] + 1, 31))  # Restrict day value between 1 and 31
                     print("changing day")
                 elif self.changing.month:
-                    self.current_time[1] = ((self.current_time[1] % 12) + 1)
+                    self.current_time[1] = max(1, min(self.current_time[1] + 1, 12))  # Restrict month value between 1 and 12
                     print("changing month")
                 elif self.changing.year:
                     self.current_time[0] = self.current_time[0] + 1  # No restriction for year value
