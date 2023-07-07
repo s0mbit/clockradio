@@ -108,7 +108,10 @@ class ClockRadio:
         self.alarm_delay_minutes = 5
         self.current_alarmtime = self.current_time
         
-        
+    #########################################
+    ### Handler Functions for Mode Button ###    
+    #########################################
+    
     def mode_handler(self, pin):
         if not self.mode_button.is_pressed():
             return
@@ -156,6 +159,11 @@ class ClockRadio:
         self.changing.alarmDay = False
         self.changing.alarmHours = False
         self.changing.alarmMinutes = False
+        
+        
+    #########################################
+    ### Handler Functions for Left Button ###    
+    #########################################
             
     def left_handler(self, pin):
         if not self.left_button.is_pressed():
@@ -229,7 +237,13 @@ class ClockRadio:
         elif self.changing.alarmMinutes:
             self.alarm[5] = (self.alarm[5] - 1) % 60    
             print("changing minutes")
-        self.oled.display_datetime(tuple(self.alarm))        
+        self.oled.display_datetime(tuple(self.alarm))    
+        
+        
+        
+    ##########################################
+    ### Handler Functions for Right Button ###    
+    ##########################################   
 
     def right_handler(self, pin):
         if not self.right_button.is_pressed():
@@ -300,6 +314,11 @@ class ClockRadio:
             self.alarm[5] = (self.alarm[5] + 1) % 60    
             print("changing minutes")
         self.oled.display_datetime(tuple(self.alarm))
+        
+        
+    ###########################################
+    ### Handler Functions for Select Button ###    
+    ###########################################
  
             
     def select_handler(self, pin):
@@ -394,6 +413,11 @@ class ClockRadio:
             self.changing.alarmMinutes = False
             print("save minutes")
             self.changing.alarmYear = True
+            
+    
+    ##########################################
+    ### Various Checks for Alarm and reset ###    
+    ##########################################
     
             
     def reset_timer(self):
@@ -425,6 +449,11 @@ class ClockRadio:
             self.alarm[5] = (self.alarm[5] + 30) % 60  # add 30 seconds to the alarm time
             self.alarm_ringing = False
             print("Snooze activated. Alarm will ring again in 30 seconds.")    
+            
+            
+    #######################################
+    ### Display Functions for main loop ###    
+    #######################################
 
             
     def display_clock(self):
@@ -459,6 +488,10 @@ class ClockRadio:
 
     def display_mode(self):
         self.oled.set_text(ClockRadio.modes[self.current_mode], 0, 0)  # Display the current mode
+        
+    #########################################
+    ###             Main Loop             ###    
+    #########################################
 
 
     def run(self):
