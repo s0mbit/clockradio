@@ -27,7 +27,7 @@ class OLEDText:
             text_x = 0
         
         self.oled.text(text, text_x, row * 10)  # Assumes each row is 10 pixels high
-        self.update_display()
+
 
 
     def display_text_value(self, text, value, row=0):
@@ -46,12 +46,52 @@ class OLEDText:
         self.oled.fill(0)
         self.oled.show()
         
-    def display_time(self,dt):
+    def display_date(self,dt):
         #self.clear()
-        dt_str1 = "{}-{}-{}".format(dt[0], dt[1], dt[2])
-        dt_str2 = "{}:{}:{}".format(dt[4], dt[5], dt[6])
-        self.set_text(dt_str1, 2,True)
-        self.set_text(dt_str2, 3,True)
+        dt_str1 = "{}-{:02d}-{:02d}".format(dt[0], dt[1], dt[2])
+        self.set_text(dt_str1, 1)
+        #self.update_display()
+        
+    def display_time(self,dt,is_24_hour_format=True):
+        #self.clear()
+        if is_24_hour_format:
+            dt_str2 = "{:02d}:{:02d}:{:02d}".format(dt[4], dt[5], dt[6])
+        else:
+            hour = int(dt[4])
+            suffix = "AM" if hour < 12 else "PM"
+            if hour == 0:
+                hour = 12
+                suffix = "AM"
+            elif hour > 12:
+                hour -= 12
+                suffix = "PM"
+            dt_str2 = "{:02d}:{:02d}:{:02d}".format(hour, dt[5], dt[6])
+            dt_str2 += " " + suffix
+
+        self.set_text(dt_str2, 1)
+        #self.update_display()
+        
+    def display_datetime(self, dt, is_24_hour_format=True):
+        #self.clear()
+        dt_str1 = "{}-{:02d}-{:02d}".format(dt[0], dt[1], dt[2])
+
+        if is_24_hour_format:
+            dt_str2 = "{:02d}:{:02d}:{:02d}".format(dt[4], dt[5], dt[6])
+        else:
+            hour = int(dt[4])
+            suffix = "AM" if hour < 12 else "PM"
+            if hour == 0:
+                hour = 12
+                suffix = "AM"
+            elif hour > 12:
+                hour -= 12
+                suffix = "PM"
+            dt_str2 = "{:02d}:{:02d}:{:02d}".format(hour, dt[5], dt[6])
+            dt_str2 += " " + suffix
+
+        self.set_text(dt_str1, 1)
+        self.set_text(dt_str2, 2)
+        #self.update_display()
         
         
         

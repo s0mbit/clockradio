@@ -71,9 +71,6 @@ class ClockRadio:
                 self.oled.display_time(tuple(self.current_time), True)
             elif self.changing.date:
                 if self.changing.day:
-                    self.current_time[2] = max(1I apologize for the truncation of the code in the previous message. Here's the continuation of the code:
-
-```python
                     self.current_time[2] = max(1, (self.current_time[2] - 1))
                     print("changing day")
                 elif self.changing.month:

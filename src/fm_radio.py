@@ -3,8 +3,7 @@ import time
 
 class Radio:
     def __init__( self, NewFrequency, NewVolume, NewMute ):
-
-#
+#       
 # set the initial values of the radio
 #
         self.Volume = 2
@@ -166,4 +165,3 @@ class Radio:
         return( MuteStatus, VolumeStatus, FrequencyStatus, StereoStatus )
 
     
-  
