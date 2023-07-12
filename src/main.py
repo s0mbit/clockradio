@@ -9,7 +9,7 @@ class Button:
         self.pin = Pin(pin_number, Pin.IN, Pin.PULL_UP)
         self.pin.irq(trigger=trigger, handler=handler)
         self.last_press = utime.ticks_ms()
-        self.debounce_time = 500
+        self.debounce_time = 250
 
     def is_pressed(self):
         if utime.ticks_diff(utime.ticks_ms(), self.last_press) > self.debounce_time:
@@ -426,7 +426,8 @@ class ClockRadio:
 
     def check_inactivity(self):
         # Check if the inactivity timer has passed the thresholdTrue
-        if utime.ticks_diff(utime.ticks_ms(), self.inactivity_timer) > 10000:  # 10 seconds
+        if utime.ticks_diff(utime.ticks_ms(), self.inactivity_timer) > 8000:  # 8 seconds
+            self.oled.clear()
             self.current_mode = 0  # switch back to clock mode
             self.reset_timer()  # reset the timer
             
@@ -520,7 +521,7 @@ class ClockRadio:
                 self.display_mode()
 
             self.oled.update_display()
-            utime.sleep(1)
+            #utime.sleep(1)
             
 
 
