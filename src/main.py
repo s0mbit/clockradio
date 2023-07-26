@@ -2,20 +2,39 @@ import sys
 import display
 import utime
 import fm_radio
+import _thread
 from machine import Pin,RTC,Timer
 
 class Button:
-    def __init__(self, pin_number, trigger, handler):
+    def __init__(self, pin_number, trigger, handler, parent):
         self.pin = Pin(pin_number, Pin.IN, Pin.PULL_UP)
         self.pin.irq(trigger=trigger, handler=handler)
         self.last_press = utime.ticks_ms()
         self.debounce_time = 250
+        self.pressed = False
+        self.parent = parent
 
     def is_pressed(self):
-        if utime.ticks_diff(utime.ticks_ms(), self.last_press) > self.debounce_time:
+        current_state = self.pin.value()
+        if current_state == 0 and utime.ticks_diff(utime.ticks_ms(), self.last_press) > self.debounce_time:
             self.last_press = utime.ticks_ms()
+            self.pressed = True
+            self.parent.update_needed = True
             return True
         return False
+
+    def was_pressed(self):
+        if self.pressed:
+            self.pressed = False  # Clear the pressed flag
+            return True
+        return False
+
+    def clear_pressed(self):
+        self.pressed = False
+
+    def reset(self):
+        self.pressed = False
+        self.last_press = utime.ticks_ms()
 
 class ChangeState:
     def __init__(self):
@@ -39,9 +58,10 @@ class ChangeState:
         self.alarm = False
         self.alarmHours = False
         self.alarmMinutes = False
-        self.alarmDay = False
-        self.alarmMonth = False
-        self.alarmYear = False
+        
+        self.Volume_Mute = False
+        self.setVolume = False
+        self.setMute = False
         
     def reset_all(self):
         self.time = False
@@ -55,11 +75,11 @@ class ChangeState:
         self.prefFM = False
         self.postFM = False
         self.alarm = False
-        self.alarmYear = False
-        self.alarmMonth = False
-        self.alarmDay = False
         self.alarmHours = False
         self.alarmMinutes = False
+        self.setVolume = False
+        self.setMute = False
+        self.Volume_Mute = False
 
 class ClockRadio:
     modes = ["Clock", "Volume", "set Alarm", "set Time", "set Date","24h Format", "change FM"]
@@ -76,23 +96,26 @@ class ClockRadio:
 
     def initialize_buttons(self):
         # Initialize button handlers
-        self.mode_button = Button(0, Pin.IRQ_FALLING, self.mode_handler)
-        self.select_button = Button(1, Pin.IRQ_FALLING, self.select_handler)
-        self.left_button = Button(2, Pin.IRQ_FALLING, self.left_handler)
-        self.right_button = Button(3, Pin.IRQ_FALLING, self.right_handler)
+        self.mode_button = Button(0, Pin.IRQ_FALLING, self.mode_handler,self)
+        self.select_button = Button(1, Pin.IRQ_FALLING, self.select_handler,self)
+        self.left_button = Button(4, Pin.IRQ_FALLING, self.left_handler,self)
+        self.right_button = Button(3, Pin.IRQ_FALLING, self.right_handler,self)
 
     def initialize_radio(self):
         # Initialize radio settings
-        self.radio = fm_radio.Radio(101.9, 0, False)
-        self.volume = 5
+        
+        self.volume = 0
         self.fm = 101.9
+        self.mute = True
+        self.radio = fm_radio.Radio(self.fm, self.volume, self.mute)
 
     def initialize_oled_and_rtc(self):
         # Initialize display and real-time clock
         self.oled = display.OLEDText()
         self.rtc = RTC()
-        self.current_time = list(self.rtc.datetime())
+        self.current_time = self.rtc.datetime()
         self.current_mode = 0
+        
 
     def initialize_changing_states(self):
         # Initialize state changes
@@ -124,6 +147,7 @@ class ClockRadio:
             "set Date": self.configure_for_date,
             "change FM": self.configure_for_fm,
             "set Alarm": self.configure_for_alarm,
+            "Volume": self.configure_for_volume
         }
 
         mode_function = modes_functions.get(ClockRadio.modes[self.current_mode])
@@ -154,11 +178,14 @@ class ClockRadio:
     def configure_for_alarm(self):
         self.changing.reset_all()
         self.changing.alarm = True
-        self.changing.alarmYear = True
-        self.changing.alarmMonth = False
-        self.changing.alarmDay = False
-        self.changing.alarmHours = False
+        self.changing.alarmHours = True
         self.changing.alarmMinutes = False
+        
+    def configure_for_volume(self):
+        self.changing.reset_all()
+        self.changing.Volume_Mute = True
+        self.changing.setVolume = True
+        self.changing.setMute = False
         
         
     #########################################
@@ -191,6 +218,7 @@ class ClockRadio:
         elif self.changing.minutes:
             self.current_time[5] = (self.current_time[5] - 1) % 60
             print("changing minutes")
+        self.rtc.datetime(self.current_time)
         self.oled.display_time(tuple(self.current_time), True)
         
     def handle_date_decrease(self):
@@ -203,10 +231,15 @@ class ClockRadio:
         elif self.changing.year:
             self.current_time[0] = self.current_time[0] - 1  # No restriction for year value
             print("changing year")
+        self.rtc.datetime(self.current_time)
         self.oled.display_date(tuple(self.current_time))
         
     def handle_volume_decrease(self):
-        self.volume -= 1  # increase volume
+        if self.changing.setVolume:
+            self.volume -= 1  # decrease volume
+        elif self.changing.setMute:
+            self.mute = not self.mute
+        
     
     def handle_fm_decrease(self):
         if self.changing.prefFM:
@@ -222,22 +255,13 @@ class ClockRadio:
         print(self.hour_format)
         
     def handle_alarm_decrease(self):
-        if self.changing.alarmYear:
-            self.alarm[0] -= 1
-            print("changing year")
-        elif self.changing.alarmMonth:
-            self.alarm[1] = (self.alarm[1] % 12) - 1
-            print("changing month")
-        elif self.changing.alarmDay:
-            self.alarm[2] = (self.alarm[2] % 31) - 1
-            print("changing day")
-        elif self.changing.alarmHours:
+        if self.changing.alarmHours:
             self.alarm[4] = (self.alarm[4] - 1) % 24
             print("changing hours")
         elif self.changing.alarmMinutes:
             self.alarm[5] = (self.alarm[5] - 1) % 60    
             print("changing minutes")
-        self.oled.display_datetime(tuple(self.alarm))    
+        self.oled.display_time(tuple(self.alarm))    
         
         
         
@@ -271,6 +295,7 @@ class ClockRadio:
         elif self.changing.minutes:
             self.current_time[5] = (self.current_time[5] + 1) % 60
             print("changing minutes")
+        self.rtc.datetime(self.current_time)
         self.oled.display_time(tuple(self.current_time), True)
         
     def handle_date_increase(self):
@@ -283,10 +308,14 @@ class ClockRadio:
         elif self.changing.year:
             self.current_time[0] = self.current_time[0] + 1  # No restriction for year value
             print("changing year")
+        self.rtc.datetime(self.current_time)
         self.oled.display_date(tuple(self.current_time))
         
     def handle_volume_increase(self):
-        self.volume += 1  # increase volume
+        if self.changing.setVolume:
+            self.volume += 1  # increase volume
+        elif self.changing.setMute:
+            self.mute = not self.mute
     
     def handle_fm_increase(self):
         if self.changing.prefFM:
@@ -298,22 +327,13 @@ class ClockRadio:
             self.fm += 0.1
         
     def handle_alarm_increase(self):
-        if self.changing.alarmYear:
-            self.alarm[0] += 1
-            print("changing year")
-        elif self.changing.alarmMonth:
-            self.alarm[1] = (self.alarm[1] % 12) + 1
-            print("changing month")
-        elif self.changing.alarmDay:
-            self.alarm[2] = (self.alarm[2] % 31) + 1
-            print("changing day")
-        elif self.changing.alarmHours:
+        if self.changing.alarmHours:
             self.alarm[4] = (self.alarm[4] + 1) % 24
             print("changing hours")
         elif self.changing.alarmMinutes:
             self.alarm[5] = (self.alarm[5] + 1) % 60    
             print("changing minutes")
-        self.oled.display_datetime(tuple(self.alarm))
+        self.oled.display_time(tuple(self.alarm))
         
         
     ###########################################
@@ -372,9 +392,18 @@ class ClockRadio:
             self.rtc.datetime(self.current_time)  # update the RTC with the new date
             
     def handle_volume(self):
-        self.radio.SetVolume(self.volume)  # Set the volume on the radio
-        self.radio.ProgramRadio()
-        print(self.radio.GetSettings())
+        if self.changing.setVolume:
+            self.changing.setVolume = False
+            self.radio.SetVolume(self.volume)  # Set the volume on the radio
+            self.radio.ProgramRadio()
+            print(self.radio.GetSettings())
+            self.changing.setMute = True
+        elif self.changing.setMute:
+            self.changing.setMute = False
+            self.radio.SetMute(self.mute)
+            self.radio.ProgramRadio()
+            self.changing.setVolume = True
+            
         
     def handle_change_fm(self):
         if self.changing.prefFM:
@@ -393,26 +422,14 @@ class ClockRadio:
         print("save 24/12h Format")
         
     def handle_set_alarm(self):
-        if self.changing.alarmYear:
-            self.changing.alarmYear = False
-            print("save year")
-            self.changing.alarmMonth = True
-        elif self.changing.alarmMonth:
-            self.changing.alarmMonth = False
-            print("save month")
-            self.changing.alarmDay = True
-        elif self.changing.alarmDay:
-            self.changing.alarmDay = False
-            print("save day")
-            self.changing.alarmHours = True
-        elif self.changing.alarmHours:
+        if self.changing.alarmHours:
             self.changing.alarmHours = False
             print("save hours")
             self.changing.alarmMinutes = True
         elif self.changing.alarmMinutes:
             self.changing.alarmMinutes = False
             print("save minutes")
-            self.changing.alarmYear = True
+            self.changing.alarmHours = True
             
     
     ##########################################
@@ -426,31 +443,58 @@ class ClockRadio:
 
     def check_inactivity(self):
         # Check if the inactivity timer has passed the thresholdTrue
-        if utime.ticks_diff(utime.ticks_ms(), self.inactivity_timer) > 8000:  # 8 seconds
-            self.oled.clear()
+        if utime.ticks_diff(utime.ticks_ms(), self.inactivity_timer) > 8000 and not self.modes[self.current_mode] == "Clock":  # 8 seconds
             self.current_mode = 0  # switch back to clock mode
-            self.reset_timer()  # reset the timer
+            self.update_needed = True
+            self.reset_timer() # reset the timer
+            print("return to Clock")
             
     def check_alarm(self):
         self.current_time = list(self.rtc.datetime())
         # check if the current time matches the alarm time
-        if self.alarm[4:6] == self.current_time[4:6] and not self.alarm_ringing:
+        if self.alarm[4:7] == self.current_time[4:7] and not self.alarm_ringing:
             self.alarm_ringing = True
+            self.mute = False
+            self.radio.SetMute(self.mute)
+            self.radio.ProgramRadio()
+            utime.sleep(1)
+
+            #self.alarm_start_time = utime.ticks_ms()  # Record when the alarm started
+            self.update_needed = True
             print("Alarm is ringing!!!")
-        elif self.alarm_ringing:
-            self.alarm_stop()  # stop the alarm if it's already ringing
-    
-    def alarm_stop(self):
-        if self.select_button.is_pressed() and self.alarm_ringing:
-            self.alarm_ringing = False
-            print("Alarm stopped.")
+            self.left_button.reset()
+            self.right_button.reset()
             
-    def snooze(self):
-        if self.right_button.is_pressed() and self.alarm_ringing:
-            self.alarm[5] = (self.alarm[5] + 30) % 60  # add 30 seconds to the alarm time
+        
+
+        # if alarm is ringing and left button is pressed, stop the alarm
+        if self.alarm_ringing and self.left_button.was_pressed():
             self.alarm_ringing = False
-            print("Snooze activated. Alarm will ring again in 30 seconds.")    
+            self.radio.SetMute(True)
+            self.radio.ProgramRadio()
+            utime.sleep(1)
+            #self.left_button.clear_pressed()
+            self.update_needed = True
+            print("Alarm stopped")
+
+        # if alarm is ringing and right button is pressed, delay the alarm
+        if self.alarm_ringing and self.right_button.was_pressed():
+        
+            self.alarm[5] += 3  # delay the alarm by 3 minutes
+            if self.alarm[5] >= 60:  # if minutes exceed 59
+                self.alarm[5] -= 60  # reset minutes
+                self.alarm[4] += 1  # increase hour
+            self.alarm_ringing = False
+            self.radio.SetMute(True)
+            self.radio.ProgramRadio()
+            utime.sleep(1)
+
+            #self.right_button.clear_pressed()
+            self.update_needed = True
+            print("Alarm delayed by 3 minutes")
             
+
+        
             
     #######################################
     ### Display Functions for main loop ###    
@@ -459,36 +503,55 @@ class ClockRadio:
             
     def display_clock(self):
         self.current_time = list(self.rtc.datetime())  # Update current time
-        self.oled.set_text(ClockRadio.modes[self.current_mode], 0, 0)
+        #self.oled.set_text(ClockRadio.modes[self.current_mode], 0, 0)
         self.oled.display_datetime(tuple(self.current_time), self.hour_format)
-        self.oled.set_text("Vol: " + str(self.volume),4)
-        self.oled.set_text(" FM: " + str(self.fm),5)
+        self.oled.set_text(" Vol: " + str(self.volume),3)
+        self.oled.set_text("  FM: " + str(self.fm),4)
+        self.oled.set_text("Mute: " + str(self.mute),5)
+        #self.oled.update_display()
 
     def display_time(self):
         self.oled.set_text(ClockRadio.modes[self.current_mode], 0, 0)
         self.oled.display_time(tuple(self.current_time), self.hour_format)
+        #self.oled.update_display()
 
     def display_date(self):
         self.oled.set_text(ClockRadio.modes[self.current_mode], 0, 0)
         self.oled.display_date(tuple(self.current_time))
+        #self.oled.update_display()
 
     def display_volume(self):
-        self.oled.set_text("Volume: " + str(self.volume), 0, 0)  # Display the current volume
+        self.oled.set_text("Set Vol & Mute",0,0)
+        self.oled.set_text("Volume: " + str(self.volume), 1, 0)  # Display the current volume
+        self.oled.set_text("Mute: " + str(self.mute),2,0)
+        #self.oled.update_display()
 
     def display_fm(self):
-        self.oled.set_text("FM: " + str(self.fm),0,0)
+        self.oled.set_text("Set fm station",0,0)
+        self.oled.set_text("FM: " + str(self.fm),1,0)
+        #self.oled.update_display()
 
     def display_hour_format(self):
         #self.oled.clear_display()
         self.oled.set_text(ClockRadio.modes[self.current_mode], 0, 0)
         self.oled.set_text("State: " + str(self.hour_format),1,0)
+        #self.oled.update_display()
 
     def display_alarm(self):
-        self.oled.set_text(ClockRadio.modes[self.current_mode], 0, 0)
-        self.oled.display_datetime(tuple(self.alarm), self.hour_format)
+        self.oled.set_text("Set Alarm", 0, 0)
+        self.oled.display_time(tuple(self.alarm), self.hour_format)
+        #self.oled.update_display()
 
     def display_mode(self):
         self.oled.set_text(ClockRadio.modes[self.current_mode], 0, 0)  # Display the current mode
+        #self.oled.update_display()
+        
+    def display_alarmring(self):
+        self.oled.set_text("Alarm",1,True)
+        self.oled.set_text("L -> Stop",3)
+        self.oled.set_text("R -> Snooze",4)
+        #self.oled.update_display()
+        
         
     #########################################
     ###             Main Loop             ###    
@@ -496,35 +559,56 @@ class ClockRadio:
 
 
     def run(self):
+        last_min = None
+        self.update_needed = False
+
         while True:
             self.check_inactivity()
-            self.oled.clear()
-            #self.oled.update_display()
+            if not self.modes[self.current_mode] == "set Alarm":
+                self.check_alarm()
 
-            # Check the specific conditions first
-            if self.modes[self.current_mode] == "24h Format":
-                self.display_hour_format()
-            elif self.modes[self.current_mode] == "Volume":
-                self.display_volume()
-            elif self.modes[self.current_mode] == "change FM":
-                self.display_fm()
-            elif self.changing.time:
-                self.display_time()
-            elif self.changing.date:
-                self.display_date()
-            elif self.changing.alarm:
-                self.display_alarm()
-            # The generic condition should be checked last
-            elif ClockRadio.modes[self.current_mode] == "Clock":
-                self.display_clock()
-            else:
-                self.display_mode()
+            self.current_time = list(self.rtc.datetime())  # Update current time
+            current_min = self.current_time[5]  # Current minute
 
-            self.oled.update_display()
-            #utime.sleep(1)
+            if current_min != last_min or self.update_needed:
+                last_min = current_min
+                self.update_needed = False  # Clear the update_needed flag
+
+                self.oled.clear()
+                
+                
+
+                # Check the specific conditions first
+                if self.alarm_ringing:
+                    self.display_alarmring()
+                elif self.modes[self.current_mode] == "24h Format":
+                    self.display_hour_format()
+                elif self.modes[self.current_mode] == "Volume":
+                    self.display_volume()
+                elif self.modes[self.current_mode] == "change FM":
+                    self.display_fm()
+                elif self.modes[self.current_mode] == "set Time":
+                    self.display_time()
+                elif self.modes[self.current_mode] == "set Date":
+                    self.display_date()
+                elif self.modes[self.current_mode] == "set Alarm":
+                    self.display_alarm()
+                # The generic condition should be checked last
+                elif ClockRadio.modes[self.current_mode] == "Clock":
+                    self.display_clock()
+                else:
+                    self.display_mode()
+
+                self.oled.update_display()
+                
+                #last_min = current_min
             
-
+            utime.sleep(0.1)
+            print(self.alarm[4:6])
+            print(self.current_time[4:7])
+            print(self.alarm_ringing)
 
 if __name__ == "__main__":
     clock_radio = ClockRadio()
     clock_radio.run()
+    #newthread = _thread.start_new_thread(clock_radio.run,())
